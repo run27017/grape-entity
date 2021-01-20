@@ -310,6 +310,15 @@ describe Grape::Entity do
         end
 
         context 'with no parameters passed to the block' do
+          it 'uses attribute object as instance when defining deep option' do
+            subject.expose :nested, deep: true do
+              expose :a, :b
+            end
+
+            representation = subject.represent({ nested: { a: 'A', b: 'B', c: 'C' }})
+            expect(representation.as_json).to eq({ nested: { a: 'A', b: 'B' }})
+          end
+
           it 'adds a nested exposure' do
             subject.expose :awesome do
               subject.expose :nested do

@@ -32,6 +32,8 @@ bundle install
 bundle exec rake
 ```
 
+For options passing to `rake spec`, look at the [documentation](https://www.rubydoc.info/gems/rspec/1.3.2/Spec/Rake/SpecTask).
+
 #### Write Tests
 
 Try to write a test that reproduces the problem you're trying to fix or describes a feature that you want to build. Add to [spec/grape-entity](spec/grape-entity).
