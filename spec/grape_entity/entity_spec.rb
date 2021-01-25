@@ -1980,6 +1980,29 @@ describe Grape::Entity do
       end
     end
 
+    describe '.to_params' do
+      it 'returns each defined documentation hash' do
+        doc = { type: 'foo', desc: 'bar' }
+        fresh_class.expose :name, documentation: doc
+        fresh_class.expose :email, documentation: doc
+        fresh_class.expose :birthday
+
+        expect(fresh_class.to_params).to eq(name: doc, email: doc, birthday: {})
+      end
+
+      it 'properly handles specific keys' do
+        fresh_class.expose :name, documentation: { type: 'string', desc: 'name', param_type: 'body' }
+        fresh_class.expose :email, documentation: { type: String, desc: 'email', is_array: true }
+        fresh_class.expose :birthday, documentation: { desc: 'birthday', is_array: true }
+
+        expect(fresh_class.to_params).to eq(
+          name: { type: 'string', desc: 'name', documenation: { param_type: 'body' } }, 
+          email: { type: Array[String], desc: 'email' },
+          birthday: { type: Array, desc: 'birthday' }
+        )
+      end
+    end
+
     describe '::DSL' do
       subject { Class.new }
 

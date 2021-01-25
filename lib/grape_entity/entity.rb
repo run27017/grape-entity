@@ -289,6 +289,28 @@ module Grape
       end
     end
 
+    def self.to_params
+      @params ||= root_exposures.each_with_object({}) do |exposure, memo|
+        memo[exposure.key] = parse_documentation_to_param(exposure.documentation || {})
+      end
+    end
+
+    def self.parse_documentation_to_param(documenation)
+      param_options = documenation.dup
+      doc_options = {}
+
+      if param_options.key?(:param_type)
+        doc_options[:param_type] = param_options.delete(:param_type)
+      end
+      if param_options.key?(:is_array) && param_options.delete(:is_array)
+        type = param_options[:type]
+        param_options[:type] = type ? Array[type] : Array
+      end
+
+      param_options[:documenation] = doc_options unless doc_options.empty?
+      param_options
+    end
+
     # This allows you to declare a Proc in which exposures can be formatted with.
     # It take a block with an arity of 1 which is passed as the value of the exposed attribute.
     #
