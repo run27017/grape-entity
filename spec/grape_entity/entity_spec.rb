@@ -315,8 +315,8 @@ describe Grape::Entity do
               expose :a, :b
             end
 
-            representation = subject.represent({ nested: { a: 'A', b: 'B', c: 'C' }})
-            expect(representation.as_json).to eq({ nested: { a: 'A', b: 'B' }})
+            representation = subject.represent({ nested: { a: 'A', b: 'B', c: 'C' } })
+            expect(representation.as_json).to eq({ nested: { a: 'A', b: 'B' } })
           end
 
           it 'adds a nested exposure' do
@@ -1982,7 +1982,7 @@ describe Grape::Entity do
 
     describe '.to_params' do
       it 'returns each defined documentation hash' do
-        doc = { type: 'foo', desc: 'bar' }
+        doc = { type: String, desc: 'bar' }
         fresh_class.expose :name, documentation: doc
         fresh_class.expose :email, documentation: doc
         fresh_class.expose :birthday
@@ -1994,11 +1994,13 @@ describe Grape::Entity do
         fresh_class.expose :name, documentation: { type: 'string', desc: 'name', param_type: 'body' }
         fresh_class.expose :email, documentation: { type: String, desc: 'email', is_array: true }
         fresh_class.expose :birthday, documentation: { desc: 'birthday', is_array: true }
+        fresh_class.expose :birthday2, documentation: { desc: 'birthday' }
 
         expect(fresh_class.to_params).to eq(
-          name: { type: 'string', desc: 'name', documenation: { param_type: 'body' } }, 
+          name: { type: String, desc: 'name', documenation: { param_type: 'body' } },
           email: { type: Array[String], desc: 'email' },
-          birthday: { type: Array, desc: 'birthday' }
+          birthday: { type: Array, desc: 'birthday' },
+          birthday2: { desc: 'birthday' }
         )
       end
     end

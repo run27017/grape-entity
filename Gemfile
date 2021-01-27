@@ -4,6 +4,8 @@ source 'http://rubygems.org'
 
 gemspec
 
+gem 'grape', path: '../grape'
+
 group :development, :test do
   gem 'rubocop', '~> 1.0', require: false
 end
@@ -17,5 +19,4 @@ group :test do
   gem 'rb-fsevent'
   gem 'ruby-grape-danger', '~> 0.1.1', require: false
   gem 'simplecov', require: false
-  gem 'pry-byebug'
 end

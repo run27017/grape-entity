@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'grape'
 require 'multi_json'
 require 'set'
 
@@ -188,11 +189,11 @@ module Grape
     # @option options :merge This option allows you to merge an exposed field to the root
     #
     # rubocop:disable Layout/LineLength
+    # rubocop:disable Metrics/AbcSize
     def self.expose(*args, &block)
       options = merge_options(args.last.is_a?(Hash) ? args.pop : {})
 
       if args.size > 1
-
         raise ArgumentError, 'You may not use the :as option on multi-attribute exposures.' if options[:as]
         raise ArgumentError, 'You may not use the :expose_nil on multi-attribute exposures.' if options.key?(:expose_nil)
         raise ArgumentError, 'You may not use block-setting on multi-attribute exposures.' if block_given?
@@ -216,6 +217,7 @@ module Grape
       @nesting_stack ||= []
       args.each { |attribute| build_exposure_for_attribute(attribute, @nesting_stack, options, block) }
     end
+    # rubocop:enable Metrics/AbcSize
     # rubocop:enable Layout/LineLength
 
     def self.build_exposure_for_attribute(attribute, nesting_stack, options, block)
@@ -293,22 +295,6 @@ module Grape
       @params ||= root_exposures.each_with_object({}) do |exposure, memo|
         memo[exposure.key] = parse_documentation_to_param(exposure.documentation || {})
       end
-    end
-
-    def self.parse_documentation_to_param(documenation)
-      param_options = documenation.dup
-      doc_options = {}
-
-      if param_options.key?(:param_type)
-        doc_options[:param_type] = param_options.delete(:param_type)
-      end
-      if param_options.key?(:is_array) && param_options.delete(:is_array)
-        type = param_options[:type]
-        param_options[:type] = type ? Array[type] : Array
-      end
-
-      param_options[:documenation] = doc_options unless doc_options.empty?
-      param_options
     end
 
     # This allows you to declare a Proc in which exposures can be formatted with.
@@ -651,6 +637,53 @@ module Grape
 
       options[:using] = options.delete(:with) if options.key?(:with)
       options
+    end
+
+    TYPE_MAPPINGS = {
+      'integer' => Integer,
+      'float' => Float,
+      'number' => Numeric,
+      'date' => Date,
+      'datetime' => DateTime,
+      'time' => Time,
+      'boolean' => Grape::API::Boolean,
+      'string' => String,
+      'symbol' => Symbol,
+      'file' => File,
+      'array' => Array,
+      'object' => Hash
+    }.freeze
+
+    class << self
+      private
+
+      def parse_documentation_to_param(documenation)
+        param_options = documenation.dup
+        doc_options = {}
+
+        doc_options[:param_type] = param_options.delete(:param_type) if param_options.key?(:param_type)
+
+        type = parse_param_type(param_options[:type], param_options.delete(:is_array))
+        param_options[:type] = type if type
+
+        param_options[:documenation] = doc_options unless doc_options.empty?
+        param_options
+      end
+
+      def parse_param_type(type, is_array)
+        if type.is_a?(String)
+          type = type.downcase
+          type = TYPE_MAPPINGS[type] if TYPE_MAPPINGS.key?(type)
+        end
+
+        if type && is_array
+          Array[type]
+        elsif is_array
+          Array
+        else
+          type
+        end
+      end
     end
   end
 end
