@@ -25,3 +25,5 @@ require 'bundler'
 Bundler.require :default, :test
 
 RSpec.configure(&:raise_errors_for_deprecations!)
+
+require 'pry'

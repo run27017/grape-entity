@@ -2003,6 +2003,17 @@ describe Grape::Entity do
           birthday2: { desc: 'birthday' }
         )
       end
+
+      it 'discards nested entity' do
+        child_class = Class.new(Grape::Entity) do
+          expose :name, documentation: { desc: 'user name' }
+          expose :age, documentation: { desc: 'user age' }
+        end
+
+        fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity' }
+
+        expect(fresh_class.to_params).to eq({})
+      end
     end
 
     describe '::DSL' do

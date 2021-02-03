@@ -293,6 +293,7 @@ module Grape
 
     def self.to_params
       @params ||= root_exposures.each_with_object({}) do |exposure, memo|
+        next if exposure.respond_to?(:using_class_name)
         memo[exposure.key] = parse_documentation_to_param(exposure.documentation || {})
       end
     end
