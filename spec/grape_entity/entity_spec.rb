@@ -923,6 +923,15 @@ describe Grape::Entity do
           expect(representation).to eq(name: nil)
         end
 
+        it 'returns all fields except with scope not set to :entity' do
+          subject.expose :visible1
+          subject.expose :visible2, documentation: { scope: :entity }
+          subject.expose :not_visible, documentation: { scope: :param }
+
+          representation = subject.represent(OpenStruct.new, serializable: true)
+          expect(representation).to eq(visible1: nil, visible2: nil)
+        end
+
         context 'with strings or symbols passed to only and except' do
           let(:object) { OpenStruct.new(user: {}) }
 
@@ -1288,6 +1297,147 @@ describe Grape::Entity do
           expect(representation['things'].size).to eq 4
           expect(representation['things'].reject { |r| r.is_a?(child_class) }).to be_empty
         end
+      end
+    end
+
+    describe '.documentation' do
+      it 'returns an empty hash is no documentation is provided' do
+        fresh_class.expose :name
+
+        expect(subject.documentation).to eq({})
+      end
+
+      it 'returns each defined documentation hash' do
+        doc = { type: 'foo', desc: 'bar' }
+        fresh_class.expose :name, documentation: doc
+        fresh_class.expose :email, documentation: doc
+        fresh_class.expose :birthday
+
+        expect(subject.documentation).to eq(name: doc, email: doc)
+      end
+
+      it 'returns each defined documentation hash with :as param considering' do
+        doc = { type: 'foo', desc: 'bar' }
+        fresh_class.expose :name, documentation: doc, as: :label
+        fresh_class.expose :email, documentation: doc
+        fresh_class.expose :birthday
+
+        expect(subject.documentation).to eq(label: doc, email: doc)
+      end
+
+      it 'resets memoization when exposing additional attributes' do
+        fresh_class.expose :x, documentation: { desc: 'just x' }
+        expect(fresh_class.instance_variable_get(:@documentation)).to be_nil
+        doc1 = fresh_class.documentation
+        expect(fresh_class.instance_variable_get(:@documentation)).not_to be_nil
+        fresh_class.expose :y, documentation: { desc: 'just y' }
+        expect(fresh_class.instance_variable_get(:@documentation)).to be_nil
+        doc2 = fresh_class.documentation
+        expect(doc1).to eq(x: { desc: 'just x' })
+        expect(doc2).to eq(x: { desc: 'just x' }, y: { desc: 'just y' })
+      end
+
+      context 'inherited documentation' do
+        it 'returns documentation from ancestor' do
+          doc = { type: 'foo', desc: 'bar' }
+          fresh_class.expose :name, documentation: doc
+          child_class = Class.new(fresh_class)
+          child_class.expose :email, documentation: doc
+
+          expect(fresh_class.documentation).to eq(name: doc)
+          expect(child_class.documentation).to eq(name: doc, email: doc)
+        end
+
+        it 'obeys unexposed attributes in subclass' do
+          doc = { type: 'foo', desc: 'bar' }
+          fresh_class.expose :name, documentation: doc
+          fresh_class.expose :email, documentation: doc
+          child_class = Class.new(fresh_class)
+          child_class.unexpose :email
+
+          expect(fresh_class.documentation).to eq(name: doc, email: doc)
+          expect(child_class.documentation).to eq(name: doc)
+        end
+
+        it 'obeys re-exposed attributes in subclass' do
+          doc = { type: 'foo', desc: 'bar' }
+          fresh_class.expose :name, documentation: doc
+          fresh_class.expose :email, documentation: doc
+
+          child_class = Class.new(fresh_class)
+          child_class.unexpose :email
+
+          nephew_class = Class.new(child_class)
+          new_doc = { type: 'todler', descr: '???' }
+          nephew_class.expose :email, documentation: new_doc
+
+          expect(fresh_class.documentation).to eq(name: doc, email: doc)
+          expect(child_class.documentation).to eq(name: doc)
+          expect(nephew_class.documentation).to eq(name: doc, email: new_doc)
+        end
+
+        it 'includes only root exposures' do
+          fresh_class.expose :name, documentation: { desc: 'foo' }
+          fresh_class.expose :nesting do
+            fresh_class.expose :smth, documentation: { desc: 'should not be seen' }
+          end
+          expect(fresh_class.documentation).to eq(name: { desc: 'foo' })
+        end
+      end
+    end
+
+    describe '.to_params' do
+      it 'returns each defined documentation hash' do
+        doc = { type: String, desc: 'bar' }
+        fresh_class.expose :name, documentation: doc
+        fresh_class.expose :email, documentation: doc
+        fresh_class.expose :birthday
+
+        expect(fresh_class.to_params).to eq(name: doc, email: doc, birthday: {})
+      end
+
+      it 'properly handles specific keys' do
+        fresh_class.expose :name, documentation: { type: 'string', desc: 'name', param_type: 'body' }
+        fresh_class.expose :email, documentation: { type: String, desc: 'email', is_array: true }
+        fresh_class.expose :birthday, documentation: { desc: 'birthday', is_array: true }
+        fresh_class.expose :birthday2, documentation: { desc: 'birthday' }
+
+        expect(fresh_class.to_params).to eq(
+          name: { type: String, desc: 'name', documenation: { param_type: 'body' } },
+          email: { type: Array[String], desc: 'email' },
+          birthday: { type: Array, desc: 'birthday' },
+          birthday2: { desc: 'birthday' }
+        )
+      end
+
+      it 'discards nested entity' do
+        child_class = Class.new(Grape::Entity) do
+          expose :name, documentation: { desc: 'user name' }
+          expose :age, documentation: { desc: 'user age' }
+        end
+
+        fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity' }
+
+        expect(fresh_class.to_params).to eq({})
+      end
+
+      it 'discards attributes if not set scope to param' do
+        fresh_class.expose :a1
+        fresh_class.expose :a2, documentation: { scope: [:param] }
+        fresh_class.expose :a3, documentation: { scope: :param }
+        fresh_class.expose :a4, documentation: { scope: [:param, :entity] }
+        fresh_class.expose :a5, documentation: { param: true }
+        fresh_class.expose :b1, documentation: { scope: :entity }
+        fresh_class.expose :b2, documentation: { scope: [:entity] }
+        fresh_class.expose :b3, documentation: { param: false }
+
+        params = fresh_class.to_params
+        expect(params.keys).to eq(%i[a1 a2 a3 a4 a5])
+        expect(params[:a1]).to eq({})
+        expect(params[:a2]).to eq({})
+        expect(params[:a3]).to eq({})
+        expect(params[:a4]).to eq({})
+        expect(params[:a5]).to eq({})
       end
     end
 
@@ -1891,128 +2041,6 @@ describe Grape::Entity do
           expect(rep.size).to eq 2
           expect(rep.all? { |r| r.is_a?(EntitySpec::UserEntity) }).to be true
         end
-      end
-    end
-
-    describe '.documentation' do
-      it 'returns an empty hash is no documentation is provided' do
-        fresh_class.expose :name
-
-        expect(subject.documentation).to eq({})
-      end
-
-      it 'returns each defined documentation hash' do
-        doc = { type: 'foo', desc: 'bar' }
-        fresh_class.expose :name, documentation: doc
-        fresh_class.expose :email, documentation: doc
-        fresh_class.expose :birthday
-
-        expect(subject.documentation).to eq(name: doc, email: doc)
-      end
-
-      it 'returns each defined documentation hash with :as param considering' do
-        doc = { type: 'foo', desc: 'bar' }
-        fresh_class.expose :name, documentation: doc, as: :label
-        fresh_class.expose :email, documentation: doc
-        fresh_class.expose :birthday
-
-        expect(subject.documentation).to eq(label: doc, email: doc)
-      end
-
-      it 'resets memoization when exposing additional attributes' do
-        fresh_class.expose :x, documentation: { desc: 'just x' }
-        expect(fresh_class.instance_variable_get(:@documentation)).to be_nil
-        doc1 = fresh_class.documentation
-        expect(fresh_class.instance_variable_get(:@documentation)).not_to be_nil
-        fresh_class.expose :y, documentation: { desc: 'just y' }
-        expect(fresh_class.instance_variable_get(:@documentation)).to be_nil
-        doc2 = fresh_class.documentation
-        expect(doc1).to eq(x: { desc: 'just x' })
-        expect(doc2).to eq(x: { desc: 'just x' }, y: { desc: 'just y' })
-      end
-
-      context 'inherited documentation' do
-        it 'returns documentation from ancestor' do
-          doc = { type: 'foo', desc: 'bar' }
-          fresh_class.expose :name, documentation: doc
-          child_class = Class.new(fresh_class)
-          child_class.expose :email, documentation: doc
-
-          expect(fresh_class.documentation).to eq(name: doc)
-          expect(child_class.documentation).to eq(name: doc, email: doc)
-        end
-
-        it 'obeys unexposed attributes in subclass' do
-          doc = { type: 'foo', desc: 'bar' }
-          fresh_class.expose :name, documentation: doc
-          fresh_class.expose :email, documentation: doc
-          child_class = Class.new(fresh_class)
-          child_class.unexpose :email
-
-          expect(fresh_class.documentation).to eq(name: doc, email: doc)
-          expect(child_class.documentation).to eq(name: doc)
-        end
-
-        it 'obeys re-exposed attributes in subclass' do
-          doc = { type: 'foo', desc: 'bar' }
-          fresh_class.expose :name, documentation: doc
-          fresh_class.expose :email, documentation: doc
-
-          child_class = Class.new(fresh_class)
-          child_class.unexpose :email
-
-          nephew_class = Class.new(child_class)
-          new_doc = { type: 'todler', descr: '???' }
-          nephew_class.expose :email, documentation: new_doc
-
-          expect(fresh_class.documentation).to eq(name: doc, email: doc)
-          expect(child_class.documentation).to eq(name: doc)
-          expect(nephew_class.documentation).to eq(name: doc, email: new_doc)
-        end
-
-        it 'includes only root exposures' do
-          fresh_class.expose :name, documentation: { desc: 'foo' }
-          fresh_class.expose :nesting do
-            fresh_class.expose :smth, documentation: { desc: 'should not be seen' }
-          end
-          expect(fresh_class.documentation).to eq(name: { desc: 'foo' })
-        end
-      end
-    end
-
-    describe '.to_params' do
-      it 'returns each defined documentation hash' do
-        doc = { type: String, desc: 'bar' }
-        fresh_class.expose :name, documentation: doc
-        fresh_class.expose :email, documentation: doc
-        fresh_class.expose :birthday
-
-        expect(fresh_class.to_params).to eq(name: doc, email: doc, birthday: {})
-      end
-
-      it 'properly handles specific keys' do
-        fresh_class.expose :name, documentation: { type: 'string', desc: 'name', param_type: 'body' }
-        fresh_class.expose :email, documentation: { type: String, desc: 'email', is_array: true }
-        fresh_class.expose :birthday, documentation: { desc: 'birthday', is_array: true }
-        fresh_class.expose :birthday2, documentation: { desc: 'birthday' }
-
-        expect(fresh_class.to_params).to eq(
-          name: { type: String, desc: 'name', documenation: { param_type: 'body' } },
-          email: { type: Array[String], desc: 'email' },
-          birthday: { type: Array, desc: 'birthday' },
-          birthday2: { desc: 'birthday' }
-        )
-      end
-
-      it 'discards nested entity' do
-        child_class = Class.new(Grape::Entity) do
-          expose :name, documentation: { desc: 'user name' }
-          expose :age, documentation: { desc: 'user age' }
-        end
-
-        fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity' }
-
-        expect(fresh_class.to_params).to eq({})
       end
     end
 

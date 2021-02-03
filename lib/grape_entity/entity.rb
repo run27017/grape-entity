@@ -294,7 +294,14 @@ module Grape
     def self.to_params
       @params ||= root_exposures.each_with_object({}) do |exposure, memo|
         next if exposure.respond_to?(:using_class_name)
-        memo[exposure.key] = parse_documentation_to_param(exposure.documentation || {})
+
+        documentation = exposure.documentation || {}
+        scopes = documentation[:scope] || [:param, :entity]
+        scopes.delete(:param) if documentation.delete(:param) == false
+        scopes = [scopes] unless scopes.is_a?(Array)
+        next unless scopes.include?(:param)
+
+        memo[exposure.key] = parse_documentation_to_param(documentation)
       end
     end
 
@@ -660,14 +667,20 @@ module Grape
 
       def parse_documentation_to_param(documenation)
         param_options = documenation.dup
+
+        # Discards useless options
+        %i[param entity scope].each { |key| param_options.delete(key) }
+
+        # Build doc options
         doc_options = {}
-
         doc_options[:param_type] = param_options.delete(:param_type) if param_options.key?(:param_type)
+        param_options[:documenation] = doc_options unless doc_options.empty?
 
+        # Build type option
         type = parse_param_type(param_options[:type], param_options.delete(:is_array))
         param_options[:type] = type if type
 
-        param_options[:documenation] = doc_options unless doc_options.empty?
+        # Return params 
         param_options
       end
 

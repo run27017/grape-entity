@@ -98,7 +98,15 @@ module Grape
         end
 
         def should_expose?(entity, options)
-          should_return_key?(options) && conditions_met?(entity, options)
+          scope_matched? && should_return_key?(options) && conditions_met?(entity, options)
+        end
+
+        def scope_matched?
+          documentation = self.documentation || {}
+          scopes = documentation[:scope].dup || [:param, :entity]
+          scopes = [scopes] unless scopes.is_a?(Array)
+          scopes.delete(:entity) if documentation[:entity] == false
+          scopes.include?(:entity)
         end
 
         def attr_path(entity, options)
