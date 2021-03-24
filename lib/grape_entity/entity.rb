@@ -291,17 +291,32 @@ module Grape
       end
     end
 
-    def self.to_params
+    def self.to_params(opts={})
+      includes = opts[:include] || []
+      includes = [includes] unless includes.is_a?(Array)
+
       @params ||= root_exposures.each_with_object({}) do |exposure, memo|
-        next if exposure.respond_to?(:using_class_name)
+        nesting = exposure.respond_to?(:using_class_name)
 
         documentation = exposure.documentation || {}
-        scopes = documentation[:scope] || [:param, :entity]
-        scopes.delete(:param) if documentation.delete(:param) == false
+
+        scopes = documentation[:scope] || (nesting ? [:entity] : [:param, :entity])
         scopes = [scopes] unless scopes.is_a?(Array)
+        scopes.delete(:param) if documentation.delete(:param) == false
+        scopes << :param if documentation.delete(:param) == true
+        scopes.delete(:entity) if documentation.delete(:entity) == false
+        scopes << :entity if documentation.delete(:entity) == true
         next unless scopes.include?(:param)
 
-        memo[exposure.key] = parse_documentation_to_param(documentation)
+        if nesting
+          memo[exposure.key] = parse_documentation_to_param({
+            type: Hash,
+            nesting: exposure.using_class_name.to_params, # TODO: 其他选项
+            **documentation
+          })
+        else
+          memo[exposure.key] = parse_documentation_to_param(documentation)
+        end
       end
     end
 

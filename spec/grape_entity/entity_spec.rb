@@ -1427,17 +1427,6 @@ describe Grape::Entity do
         )
       end
 
-      it 'discards nested entity' do
-        child_class = Class.new(Grape::Entity) do
-          expose :name, documentation: { desc: 'user name' }
-          expose :age, documentation: { desc: 'user age' }
-        end
-
-        fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity' }
-
-        expect(fresh_class.to_params).to eq({})
-      end
-
       it 'discards attributes if not set scope to param' do
         fresh_class.expose :a1
         fresh_class.expose :a2, documentation: { scope: [:param] }
@@ -1455,6 +1444,56 @@ describe Grape::Entity do
         expect(params[:a3]).to eq({})
         expect(params[:a4]).to eq({})
         expect(params[:a5]).to eq({})
+      end
+
+      context 'nested entities' do
+        it 'discards nested netities by default' do
+          child_class = Class.new(Grape::Entity) do
+            expose :name, documentation: { desc: 'user name' }
+            expose :age, documentation: { desc: 'user age' }
+          end
+
+          fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity' }
+
+          expect(fresh_class.to_params).to eq({})
+        end
+
+        it 'includes nested entities when as param' do
+          child_class = Class.new(Grape::Entity) do
+            expose :name, documentation: { desc: 'user name' }
+            expose :age, documentation: { desc: 'user age' }
+          end
+
+          fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity', scope: [:param] }
+
+          expect(fresh_class.to_params).to eq({
+            user: { type: Hash, desc: 'user entity', nesting: {
+              name: { desc: 'user name' },
+              age: { desc: 'user age' }
+            } }
+          })
+        end
+
+        it 'handles `is_array`' do
+          child_class = Class.new(Grape::Entity) do
+            expose :name, documentation: { desc: 'user name' }
+            expose :age, documentation: { desc: 'user age' }
+          end
+
+          fresh_class.expose :user, using: child_class, documentation: { desc: 'user entity', is_array: true, scope: [:param] }
+          fresh_class.expose :user2, using: child_class, documentation: { desc: 'user entity', type: Array[Hash], scope: [:param] }
+
+          expect(fresh_class.to_params).to eq({
+            user: { type: Array[Hash], desc: 'user entity', nesting: {
+              name: { desc: 'user name' },
+              age: { desc: 'user age' }
+            } },
+            user2: { type: Array[Hash], desc: 'user entity', nesting: {
+              name: { desc: 'user name' },
+              age: { desc: 'user age' }
+            } }
+          })
+        end
       end
     end
 
