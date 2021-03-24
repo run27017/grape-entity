@@ -1420,7 +1420,7 @@ describe Grape::Entity do
         fresh_class.expose :birthday2, documentation: { desc: 'birthday' }
 
         expect(fresh_class.to_params).to eq(
-          name: { type: String, desc: 'name', documenation: { param_type: 'body' } },
+          name: { type: String, desc: 'name', documentation: { param_type: 'body' } },
           email: { type: Array[String], desc: 'email' },
           birthday: { type: Array, desc: 'birthday' },
           birthday2: { desc: 'birthday' }

@@ -184,7 +184,7 @@ module Grape
     #   will be called with the represented object as well as the
     #   runtime options that were passed in. You can also just supply a
     #   block to the expose call to achieve the same effect.
-    # @option options :documentation Define documenation for an exposed
+    # @option options :documentation Define documentation for an exposed
     #   field, typically the value is a hash with two fields, type and desc.
     # @option options :merge This option allows you to merge an exposed field to the root
     #
@@ -665,8 +665,8 @@ module Grape
     class << self
       private
 
-      def parse_documentation_to_param(documenation)
-        param_options = documenation.dup
+      def parse_documentation_to_param(documentation)
+        param_options = documentation.dup
 
         # Discards useless options
         %i[param entity scope].each { |key| param_options.delete(key) }
@@ -674,7 +674,7 @@ module Grape
         # Build doc options
         doc_options = {}
         doc_options[:param_type] = param_options.delete(:param_type) if param_options.key?(:param_type)
-        param_options[:documenation] = doc_options unless doc_options.empty?
+        param_options[:documentation] = doc_options unless doc_options.empty?
 
         # Build type option
         type = parse_param_type(param_options[:type], param_options.delete(:is_array))
