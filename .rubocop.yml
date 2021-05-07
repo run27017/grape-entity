@@ -37,17 +37,14 @@ Lint/ConstantDefinitionInBlock:
 #  Metrics stuff
 #
 Metrics/AbcSize:
-  Max: 25
-  IgnoredMethods:
-    # from lib/grape_entity/exposure/nesting_exposure.rb
-    - 'normalized_exposures'
+  Enabled: false
 
 Metrics/BlockLength:
   Exclude:
     - spec/**/*
 
 Metrics/CyclomaticComplexity:
-  Max: 13
+  Enabled: false
 
 Metrics/ClassLength:
   Max: 300
@@ -58,13 +55,7 @@ Metrics/MethodLength:
     - spec/**/*
 
 Metrics/PerceivedComplexity:
-  Max: 11
-  IgnoredMethods:
-    # from lib/grape_entity/entity.rb
-    - 'expose'
-    - 'merge_options'
-    # from lib/grape_entity/exposure/nesting_exposure.rb
-    - 'normalized_exposures'
+  Enabled: false
 
 #  Naming stuff
 #

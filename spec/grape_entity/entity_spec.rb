@@ -1431,7 +1431,7 @@ describe Grape::Entity do
         fresh_class.expose :a1
         fresh_class.expose :a2, documentation: { scope: [:param] }
         fresh_class.expose :a3, documentation: { scope: :param }
-        fresh_class.expose :a4, documentation: { scope: [:param, :entity] }
+        fresh_class.expose :a4, documentation: { scope: %i[param entity] }
         fresh_class.expose :a5, documentation: { param: true }
         fresh_class.expose :b1, documentation: { scope: :entity }
         fresh_class.expose :b2, documentation: { scope: [:entity] }

@@ -103,7 +103,7 @@ module Grape
 
         def scope_matched?
           documentation = self.documentation || {}
-          scopes = documentation[:scope].dup || [:param, :entity]
+          scopes = documentation[:scope].dup || %i[param entity]
           scopes = [scopes] unless scopes.is_a?(Array)
           scopes.delete(:entity) if documentation[:entity] == false
           scopes.include?(:entity)

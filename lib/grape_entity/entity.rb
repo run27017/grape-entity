@@ -44,7 +44,7 @@ module Grape
   #       end
   #     end
   #   end
-  class Entity
+  class Entity # rubocop:disable Metrics/ClassLength
     attr_reader :object, :delegator, :options
 
     # The Entity DSL allows you to mix entity functionality into
@@ -189,7 +189,6 @@ module Grape
     # @option options :merge This option allows you to merge an exposed field to the root
     #
     # rubocop:disable Layout/LineLength
-    # rubocop:disable Metrics/AbcSize
     def self.expose(*args, &block)
       options = merge_options(args.last.is_a?(Hash) ? args.pop : {})
 
@@ -217,7 +216,6 @@ module Grape
       @nesting_stack ||= []
       args.each { |attribute| build_exposure_for_attribute(attribute, @nesting_stack, options, block) }
     end
-    # rubocop:enable Metrics/AbcSize
     # rubocop:enable Layout/LineLength
 
     def self.build_exposure_for_attribute(attribute, nesting_stack, options, block)
@@ -291,16 +289,13 @@ module Grape
       end
     end
 
-    def self.to_params(opts={})
-      includes = opts[:include] || []
-      includes = [includes] unless includes.is_a?(Array)
-
+    def self.to_params
       @params ||= root_exposures.each_with_object({}) do |exposure, memo|
         nesting = exposure.respond_to?(:using_class_name)
 
         documentation = exposure.documentation || {}
 
-        scopes = documentation[:scope] || (nesting ? [:entity] : [:param, :entity])
+        scopes = documentation[:scope] || (nesting ? [:entity] : %i[param entity])
         scopes = [scopes] unless scopes.is_a?(Array)
         scopes.delete(:param) if documentation.delete(:param) == false
         scopes << :param if documentation.delete(:param) == true
@@ -308,15 +303,15 @@ module Grape
         scopes << :entity if documentation.delete(:entity) == true
         next unless scopes.include?(:param)
 
-        if nesting
-          memo[exposure.key] = parse_documentation_to_param({
-            type: Hash,
-            nesting: exposure.using_class_name.to_params, # TODO: 其他选项
-            **documentation
-          })
-        else
-          memo[exposure.key] = parse_documentation_to_param(documentation)
-        end
+        memo[exposure.key] = if nesting
+                               parse_documentation_to_param({
+                                 type: Hash,
+                                 nesting: exposure.using_class_name.to_params, # TODO: other options?
+                                 **documentation
+                               })
+                             else
+                               parse_documentation_to_param(documentation)
+                             end
       end
     end
 
@@ -695,7 +690,7 @@ module Grape
         type = parse_param_type(param_options[:type], param_options.delete(:is_array))
         param_options[:type] = type if type
 
-        # Return params 
+        # Return params
         param_options
       end
 
